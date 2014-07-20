@@ -7,7 +7,7 @@ NOTES FOR REVIEWER:
 * I only needed access to some endpoints for this exercise, and it sufficed to use a "bearer" token to access them on behalf of the test app that I built. As such it was trivial to implement, so I did not use a 3rd party OAuth library.
 
 * I would love to have an opportunity to explain my work, as there are assumptions, and choices I made a long the way, that might not be typical/ideal.
-** For example: I could not find a service in the twitter API that would let me pre-filter the tweets by date in the API call. So I am retrieving the max number of tweets possible, and then filtering them by date in the app.
+For example: I could not find a service in the twitter API that would let me pre-filter the tweets by date in the API call. So I am retrieving the max number of tweets possible, and then filtering them by date in the app.
 
 * I have used unity.mvc4 for dependency injection, to ease unit testing.
 
