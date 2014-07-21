@@ -174,9 +174,9 @@ namespace pbpTwitterExercise.Test
         [Test]
         public void TestGetAggregateFeedItemMentionsRegularExpression()
         {
-            string name1 = "@com__h4nd_";
-            string name2 = "@JANDLE";
-            string name3 = "@tW_tw_2";
+            const string name1 = "@com__h4nd_";
+            const string name2 = "@JANDLE";
+            const string name3 = "@tW_tw_2";
             var handles = new[] { name1, name2, name3 };
 
             var tcMock = new Mock<ISocialCorrespondent>();

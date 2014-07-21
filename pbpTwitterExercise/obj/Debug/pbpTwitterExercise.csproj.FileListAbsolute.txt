@@ -38,6 +38,5 @@ C:\Projects\pbpTwitterExercise2\pbpTwitterExercise\bin\Newtonsoft.Json.xml
 C:\Projects\pbpTwitterExercise2\pbpTwitterExercise\bin\System.Web.Mvc.xml
 C:\Projects\pbpTwitterExercise2\pbpTwitterExercise\bin\System.Web.WebPages.xml
 C:\Projects\pbpTwitterExercise2\pbpTwitterExercise\bin\System.Web.WebPages.Razor.xml
-C:\Projects\pbpTwitterExercise2\pbpTwitterExercise\obj\Debug\pbpTwitterExercise.csprojResolveAssemblyReference.cache
 C:\Projects\pbpTwitterExercise2\pbpTwitterExercise\obj\Debug\pbpTwitterExercise.dll
 C:\Projects\pbpTwitterExercise2\pbpTwitterExercise\obj\Debug\pbpTwitterExercise.pdb
