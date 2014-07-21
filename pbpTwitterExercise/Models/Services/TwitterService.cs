@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Web.Configuration;
@@ -27,25 +28,28 @@ namespace pbpTwitterExercise.Models.Services
             foreach (var twitterHandle in twitterHandles)
             {
                 var feedItems = TwitterCorrespondent.GetTimeline(twitterHandle, bearerToken);
-                var totalTweets = 0;
-                var totalMentions = 0;
-                foreach (var feedItem in feedItems)
+                if (feedItems != null)
                 {
-                    // filter results by datetime
-                    if (feedItem.PostedDateTime >= fromDateTime)
+                    var totalTweets = 0;
+                    var totalMentions = 0;
+                    foreach (var feedItem in feedItems)
                     {
-                        totalTweets++;
-                        totalMentions += CountMentions(twitterHandle, feedItem.Text);
-                        
-                        concatenatedFeeds.Add(feedItem);
-                        
+                        // filter results by datetime
+                        if (feedItem.PostedDateTime >= fromDateTime)
+                        {
+                            totalTweets++;
+                            totalMentions += CountMentions(twitterHandle, feedItem.Text);
+
+                            concatenatedFeeds.Add(feedItem);
+
+                        }
                     }
+                    aggregateFeed.MetaData.Add(twitterHandle, new FeedMetaData
+                    {
+                        TotalFeedItems = totalTweets,
+                        TotalExternalReferences = totalMentions
+                    });
                 }
-                aggregateFeed.MetaData.Add(twitterHandle, new FeedMetaData
-                {
-                    TotalFeedItems = totalTweets,
-                    TotalExternalReferences = totalMentions
-                });
             }
             
             aggregateFeed.FeedItems = concatenatedFeeds.OrderByDescending(i => i.PostedDateTime).ToList();
@@ -71,7 +75,11 @@ namespace pbpTwitterExercise.Models.Services
              */
             const string twitterHandlePattern = @"@[A-Za-z0-9_]{1,15}";
             var matches = new Regex(twitterHandlePattern).Matches(text);
-            return matches.Cast<object>().Count(match => match.ToString() != twitterHandle);
+            return
+                matches.Cast<object>()
+                    .Count(
+                        match =>
+                            (twitterHandle.IndexOf(match.ToString(), StringComparison.CurrentCultureIgnoreCase) < 0)); // case insensitive does not contain (< 0).
         }
     }
 
