@@ -18,25 +18,45 @@ namespace pbpTwitterExercise.Test
 
         private readonly IDictionary<string, ExpectedFeedData> expectedFeedData = new Dictionary<string, ExpectedFeedData>();
 
+        private const string MockTwitterBearerToken = "fakeBearerToken";
+
         private const int MaxTwitterHandles = 5;
-            
+
+        private const int MaxFeedsToAggregate = 3;
+
+        private readonly IList<string> twitterHandles = new List<string>();
+
         [SetUp]
         public void Init()
         {
             twitterService = new TwitterService();
-            const string mockTwitterBearerToken = "fakeBearerToken";
+
+            // Mock the ISocialCorrespondent.
             var twitterCorrespondentMock = new Mock<ISocialCorrespondent>();
-            twitterCorrespondentMock.Setup(x => x.GetBearerToken(It.IsAny<string>(), It.IsAny<string>())).Returns(mockTwitterBearerToken);
-            
+            twitterCorrespondentMock.Setup(x => x.GetBearerToken(It.IsAny<string>(), It.IsAny<string>())).Returns(MockTwitterBearerToken);
+
+            // Generate test twitter feeds, and setup return values from mock twitterCorrespondent.
             const string accountNamePrefix = "@account";
-            expectedFeedData.Clear();
             for (int i = 0; i < MaxTwitterHandles; i++)
             {
-                int accountNumber = i;
-                twitterCorrespondentMock.Setup(x => x.GetTimeline(accountNamePrefix + accountNumber, mockTwitterBearerToken)).Returns(CreateTestFeedData(accountNamePrefix, i));
+                var accountName = accountNamePrefix + i;
+                if (i < MaxFeedsToAggregate)
+                {
+                    twitterHandles.Add(accountName);
+                }
+
+                twitterCorrespondentMock.Setup(x => x.GetTimeline(accountName, MockTwitterBearerToken)).Returns(CreateTestFeedData(accountNamePrefix, i));
             }
 
+            //
             twitterService.TwitterCorrespondent = twitterCorrespondentMock.Object;
+        }
+
+        [TearDown]
+        public void Cleanup()
+        {
+            expectedFeedData.Clear();
+            twitterHandles.Clear();
         }
 
         private IList<FeedItem> CreateTestFeedData(string accountName, int suffix)
@@ -48,12 +68,12 @@ namespace pbpTwitterExercise.Test
             var filteredFeedItems = new List<FeedItem>();
             for (int i = 0; i < 200; i++)
             {
-                var randomPostDate = DateTime.Now.AddDays(r.Next(-30, 0));
+                var randomPostDate = DateTime.Now.AddDays(r.Next(-30, 0)); // random date between today and 30 days ago.
 
                 var feedItem = new FeedItem
                 {
                     AccountName = accountName + suffix,
-                    Text = "@account" + i + " post number " + i,
+                    Text = "hello @account" + i + " this is post number " + i + ", blah blah",
                     PostedDateTime = randomPostDate
                 };
 
@@ -90,9 +110,10 @@ namespace pbpTwitterExercise.Test
             var aggregateFeed = GetAggregateFeedFromTestData();
 
             Assert.NotNull(aggregateFeed);
-            Assert.AreEqual(expectedFeedData["@account0"].TotalFeedItems, aggregateFeed.MetaData["@account0"].TotalFeedItems);
-            Assert.AreEqual(expectedFeedData["@account1"].TotalFeedItems, aggregateFeed.MetaData["@account1"].TotalFeedItems);
-            Assert.AreEqual(expectedFeedData["@account2"].TotalFeedItems, aggregateFeed.MetaData["@account2"].TotalFeedItems);
+            foreach (var twitterHandle in twitterHandles)
+            {
+                Assert.AreEqual(expectedFeedData[twitterHandle].TotalFeedItems, aggregateFeed.MetaData[twitterHandle].TotalFeedItems);
+            }
         }
 
         [Test]
@@ -101,40 +122,39 @@ namespace pbpTwitterExercise.Test
             var aggregateFeed = GetAggregateFeedFromTestData();
 
             Assert.NotNull(aggregateFeed);
-            Assert.AreEqual(expectedFeedData["@account0"].TotalExternalReferences, aggregateFeed.MetaData["@account0"].TotalExternalReferences);
-            Assert.AreEqual(expectedFeedData["@account1"].TotalExternalReferences, aggregateFeed.MetaData["@account1"].TotalExternalReferences);
-            Assert.AreEqual(expectedFeedData["@account2"].TotalExternalReferences, aggregateFeed.MetaData["@account2"].TotalExternalReferences);
+            foreach (var twitterHandle in twitterHandles)
+            {
+                Assert.AreEqual(expectedFeedData[twitterHandle].TotalExternalReferences, aggregateFeed.MetaData[twitterHandle].TotalExternalReferences);
+            }
         }
-        
+
         [Test]
         public void TestGetAggregateFeedItemsCountMatchesItemsInFeed()
         {
             var aggregateFeed = GetAggregateFeedFromTestData();
 
             Assert.NotNull(aggregateFeed);
-            Assert.AreEqual(expectedFeedData["@account0"].FilteredFeedItems.Count, aggregateFeed.MetaData["@account0"].TotalFeedItems);
-            Assert.AreEqual(expectedFeedData["@account1"].FilteredFeedItems.Count, aggregateFeed.MetaData["@account1"].TotalFeedItems);
-            Assert.AreEqual(expectedFeedData["@account2"].FilteredFeedItems.Count, aggregateFeed.MetaData["@account2"].TotalFeedItems);
+            foreach (var twitterHandle in twitterHandles)
+            {
+                Assert.AreEqual(expectedFeedData[twitterHandle].FilteredFeedItems.Count, aggregateFeed.MetaData[twitterHandle].TotalFeedItems);
+            }
         }
-        
+
         [Test]
         public void TestGetAggregateFeedContainsAllExpectedFeedItems()
         {
             // get the results from the service
-            var aggregateFeed = twitterService.GetAggregateFeed(new[]
-            {
-                "@account0",
-                "@account1"
-            }, twoWeeksAgo);
+            var aggregateFeed = GetAggregateFeedFromTestData();
 
-            // merge expected data into a list
+            // merge expected data into a list.
             var concatenatedFeed = new List<FeedItem>();
-            concatenatedFeed.AddRange(expectedFeedData["@account0"].FilteredFeedItems);
-            concatenatedFeed.AddRange(expectedFeedData["@account1"].FilteredFeedItems);
+            foreach (var twitterHandle in twitterHandles)
+            {
+                concatenatedFeed.AddRange(expectedFeedData[twitterHandle].FilteredFeedItems);
+            }
 
-            // does not test for the correct order here, that is a separate test.
             Assert.NotNull(aggregateFeed);
-            Assert.That(aggregateFeed.FeedItems.ToArray(), Is.EquivalentTo(concatenatedFeed.OrderByDescending(o=>o.PostedDateTime).ToArray()));
+            Assert.That(aggregateFeed.FeedItems.ToArray(), Is.EqualTo(concatenatedFeed.OrderByDescending(o => o.PostedDateTime).ToArray()));
         }
 
         [Test]
@@ -151,14 +171,35 @@ namespace pbpTwitterExercise.Test
             }
         }
 
+        [Test]
+        public void TestGetAggregateFeedItemMentionsRegularExpression()
+        {
+            string name1 = "@com__h4nd_";
+            string name2 = "@JANDLE";
+            string name3 = "@tW_tw_2";
+            var handles = new[] { name1, name2, name3 };
+
+            var tcMock = new Mock<ISocialCorrespondent>();
+            tcMock.Setup(x => x.GetBearerToken(It.IsAny<string>(), It.IsAny<string>())).Returns(MockTwitterBearerToken);
+            tcMock.Setup(x => x.GetTimeline(name1, MockTwitterBearerToken)).Returns(new[]
+            {
+                new FeedItem
+                {
+                    AccountName = name1,
+                    PostedDateTime = DateTime.Now,
+                    Text = "hello there @so_ot_PE, tweet at me anytime " + name1 + name2 // 2 mentions. One is my own.
+                }
+            });
+            twitterService.TwitterCorrespondent = tcMock.Object;
+
+            var aggregateFeed = twitterService.GetAggregateFeed(handles, DateTime.Now.AddYears(-1));
+
+            Assert.AreEqual(2, aggregateFeed.MetaData[name1].TotalExternalReferences);
+        }
+
         private AggregateFeed GetAggregateFeedFromTestData()
         {
-            var aggregateFeed = twitterService.GetAggregateFeed(new[]
-            {
-                "@account0",
-                "@account1",
-                "@account2"
-            }, twoWeeksAgo);
+            var aggregateFeed = twitterService.GetAggregateFeed(twitterHandles, twoWeeksAgo);
             return aggregateFeed;
         }
     }
