@@ -67,6 +67,29 @@ namespace pbpTwitterExercise.Models.Services
             return aggregateFeed;
         }
 
+        public Dictionary<string, int> GetFans(string twitterHandle, DateTime fromDateTime)
+        {
+            // The service calls we are making to twitter only requires a bearer token, to
+            // make calls on behalf of the app.
+            var bearerToken = TwitterCorrespondent.GetBearerToken(ConsumerKey, ConsumerSecret);
+            var feedItems = TwitterCorrespondent.GetMentions(twitterHandle, bearerToken, fromDateTime);
+
+            var result = new Dictionary<string, int>();
+
+            foreach (var feedItem in feedItems)
+            {
+                if (!result.ContainsKey(feedItem.AccountName))
+                {
+                    result.Add(feedItem.AccountName, 0);
+                }
+
+                var x = result[feedItem.AccountName];
+                result[feedItem.AccountName] = x + 1;
+            }
+
+            return result;
+        }
+
         private int CountMentions(string twitterHandle, string text)
         {
             /*

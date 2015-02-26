@@ -1,0 +1,60 @@
+﻿@model pbpTwitterExercise.Controllers.FansViewModel
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Triple O's Fans on Twitter</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Triple O's Twitter Fans</h1>
+        <p></p>
+        <p>
+            Since @Model.Since these are the users that have mentioned @@TripleOs<br/>
+            <small>Results compiled using the Twitter REST API search endpoint https://dev.twitter.com/rest/public/search. </small>
+        </p>
+        <p></p>
+        @{
+            List<KeyValuePair<string, int>> myList = Model.Fans.ToList();
+
+            myList.Sort((firstPair, nextPair) =>
+            {
+                return nextPair.Value.CompareTo(firstPair.Value);
+            }
+                );
+        }
+
+        <table class="table table-condensed table-striped">
+            <thead>
+                <tr>
+                    <th>Twitter Handle</th>
+                    <th># Mentions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in myList)
+                {
+                    <tr>
+                        <td>@e.Key</td>
+                        <td>@e.Value</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

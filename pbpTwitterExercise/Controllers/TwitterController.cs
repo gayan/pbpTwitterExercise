@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Web.Mvc;
 using Microsoft.Practices.Unity;
@@ -39,5 +40,25 @@ namespace pbpTwitterExercise.Controllers
             }
         }
 
+        public ActionResult Fans()
+        {
+            /* Find user's that have mentioned "@tripleos" in their tweets in the last 5 years
+             * rank them by the number of times they mentioned tripleos
+             */
+
+            var since = DateTime.Now.AddYears(-5);
+            
+            return View(new FansViewModel
+            {
+                Fans = TwitterService.GetFans("@TripleOs", since),
+                Since = since
+            });
+        }
+    }
+
+    public class FansViewModel
+    {
+        public Dictionary<string, int> Fans { get; set; }
+        public DateTime Since { get; set; }
     }
 }

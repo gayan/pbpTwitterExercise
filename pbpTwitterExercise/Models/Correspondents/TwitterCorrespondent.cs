@@ -107,11 +107,77 @@ namespace pbpTwitterExercise.Models.Correspondents
                 return null;
             }
         }
+
+        public IList<FeedItem> GetMentions(string user, string bearerToken, DateTime fromDateTime)
+        {
+            // early returns for errors
+            if (string.IsNullOrEmpty(user))
+                return null;
+
+            if (bearerToken == null)
+                throw new AuthenticationException("No bearer token provided");
+
+            // Calling as described in doc https://api.twitter.com/1.1/search/tweets.json?q=%40tripleos
+            // to search for mentions
+
+            return searchResults(bearerToken, "?q=" + user + " since:" + fromDateTime.ToString("yyyy-MM-dd"));
+        }
+
+        private IList<FeedItem> searchResults (string bearerToken, string qString)
+        {
+            var r = new List<FeedItem>();
+
+            using (var client = new HttpClient())
+            {
+                client.BaseAddress = new Uri(ApiBaseUrl);
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+
+                // twitter doesn't provide much filtering capability by datetime. So we will get the max tweets,
+                // and then filter them as required at a higher layer of the application.
+                var relativeUrl = WebConfigurationManager.AppSettings["Twitter.SearchEndpoint"] + qString;
+
+                var result = client.GetAsync(relativeUrl).Result;
+                if (result.IsSuccessStatusCode)
+                {
+                    var x = result.Content.ReadAsStringAsync().Result;
+                    dynamic dynObj = JsonConvert.DeserializeObject(x);
+
+                    foreach (var status in dynObj.statuses)
+                    {
+                        var f = new FeedItem();
+                        f.AccountName = status.user.screen_name;
+                        f.Text = status.text;
+                        string createdAt = status.created_at;
+                        f.PostedDateTime = DateTime.ParseExact(createdAt, "ddd MMM dd HH:mm:ss zzzz yyyy", CultureInfo.InvariantCulture);
+                        r.Add(f);
+                    }
+
+                    try
+                    {
+                        var next = dynObj.search_metadata.next_results.ToString();
+                        r.AddRange(searchResults(bearerToken, next));
+                    }
+                    catch
+                    {
+                        return r;
+                    }
+                }
+
+                if (result.StatusCode == HttpStatusCode.NotFound)
+                {
+                    throw new SocialUserNotFoundException(qString);
+                }
+
+                result.EnsureSuccessStatusCode(); // throw exception, call to twitter was not successful.
+
+                return r;
+            }
+        }
     }
 
     public class TwitterDateTimeConverter : DateTimeConverterBase
     {
-        const string TwitterDateTimeFormat = "ddd MMM dd HH:mm:ss zzzz yyyy"; // hard coded because this converter is very specific for twitter. One might argue otherwise.
+        public const string TwitterDateTimeFormat = "ddd MMM dd HH:mm:ss zzzz yyyy"; // hard coded because this converter is very specific for twitter. One might argue otherwise.
         
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
         {
@@ -145,6 +211,15 @@ namespace pbpTwitterExercise.Models.Correspondents
                 Text = Text
             };
         }
+    }
+
+    public class TwitterSearchResult
+    {
+        public string Text { get; set; }
+
+        public DateTime CreatedAt { get; set; }
+
+        public string ScreenName { get; set; }
     }
     
     [JsonObject]
