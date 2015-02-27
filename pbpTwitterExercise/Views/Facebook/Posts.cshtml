@@ -1,0 +1,61 @@
+﻿@using System.Collections.Generic
+@using System.Linq
+@using System.Web
+@using pbpTwitterExercise.Controllers
+@model System.Collections.Generic.Dictionary<string,pbpTwitterExercise.Controllers.FbAggregate>
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Triple O's Posts on Facebook</title>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h1>Triple O's Posts on Facebook</h1>
+    <p></p>
+    <p>
+        <strong>How did I get these results?</strong> The program goes through every post ever made by Triple O's. Then it counts the number of comments and likes.
+    </p>
+    <p></p>
+    <table class="table table-condensed table-striped">
+        <thead>
+        <tr>
+            <th>Link</th>
+            <th>Total likes</th>
+            <th>Total Comments</th>
+        </tr>
+        </thead>
+        <tbody class="">
+            @{
+                List<KeyValuePair<string, FbAggregate>> myList = Model.ToList();
+
+                myList.Sort((firstPair, nextPair) => { return nextPair.Value.TotalComments.CompareTo(firstPair.Value.TotalComments); } );
+            }
+            @foreach (var u in myList)
+            {
+                <tr>
+                    <td>@(new HtmlString(string.Format("<a href='https://www.facebook.com/{0}/posts/{1}'>{1}</a>", u.Key.Split('_')[0], u.Key.Split('_')[1])))</td> 
+                    <td>@u.Value.TotalLikes</td>
+                    <td>@u.Value.TotalComments</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

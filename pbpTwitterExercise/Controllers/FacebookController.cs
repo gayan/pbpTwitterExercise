@@ -60,6 +60,44 @@ namespace pbpTwitterExercise.Controllers
 
             return View(compiledResults);
         }
+
+        public ActionResult Posts()
+        {
+            var allResults = fb.GetPopularPosts();
+            var compiledResults = new Dictionary<string, FbAggregate>();
+
+            foreach (var post in allResults["likes"])
+            {
+                if (!compiledResults.ContainsKey(post.Id))
+                {
+                    compiledResults.Add(post.Id, new FbAggregate
+                    {
+                        TotalComments = 0,
+                        TotalLikes = 0
+                    });
+                }
+
+                var u = compiledResults[post.Id];
+                u.TotalLikes += post.Count;
+            }
+
+            foreach (var post in allResults["comments"])
+            {
+                if (!compiledResults.ContainsKey(post.Id))
+                {
+                    compiledResults.Add(post.Id, new FbAggregate
+                    {
+                        TotalComments = 0,
+                        TotalLikes = 0
+                    });
+                }
+
+                var u = compiledResults[post.Id];
+                u.TotalComments += post.Count;
+            }
+
+            return View(compiledResults);
+        }
     }
 
     public class FbAggregate

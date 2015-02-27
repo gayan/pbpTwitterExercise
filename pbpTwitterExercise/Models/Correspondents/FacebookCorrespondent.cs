@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Net.Http;
 using System.Web;
@@ -9,11 +10,12 @@ namespace pbpTwitterExercise.Models.Correspondents
 {
     public class FacebookCorrespondent
     {
+        private string startingpPoint = "https://graph.facebook.com/v2.2/sasktel/posts?access_token=CAACEdEose0cBAHfrZC0ZAt62j6yyoqn4wgqOAZCi5EaAJYMC4T2d2quM8bYennOZBxxfjZBOqEzsiiEw7PhV4udwHzdEBa4qnFdx5TmognwwpcbqV1cpa49ZCbImqZBcNkvq8RFZARqhHZCdPkocziIKZB4FqncKIVkBgn9ow7FNXPHB0YMaOS0MYGR0egCbq9qltRnU1CHLf73XE3ZC1IyWi2tjmlXidWyH0cZD";
+
         public FbEngagement GetMentions()
         {
-            var endpoint = "https://graph.facebook.com/v2.2/SaskTel/posts?access_token=CAACEdEose0cBAJ50AZA2YGeazTIwmqRP1UZBkBSx2Oh4XHX2EtreGZBiubY6l8ZA176xwjHxWWiLgZBHrZC3bZAWXl7cYBjfLk5hE6Ha7CKWdiDCEf5QscBqSJYWgIRvpQ6uc4PbQN07i8tL768bak2w5C3OpGYQ3v1BMj93xrn9WxrApU6BDHRzcxCelJBagmXEgwJDfyGNpo4ykBSocOl";
-            var likes = GetLikes(endpoint);
-            var comments = GetComments(endpoint);
+            var likes = GetLikes(startingpPoint);
+            var comments = GetComments(startingpPoint);
 
             return new FbEngagement
             {
@@ -124,17 +126,22 @@ namespace pbpTwitterExercise.Models.Correspondents
                         });
                     }
 
+                    string moreLikes;
                     // and then we must page through likes.
                     try
                     {
-                        var moreLikes = post.comments.paging.next;
-                        likes.AddRange(
-                            GetMoreLikes(moreLikes));
+                        moreLikes = post.likes.paging.next;
                     }
                     catch
                     {
-                        // no paging to be done.
+                        moreLikes = null;
                     }
+
+                    if (moreLikes != null)
+                    {
+                        likes.AddRange(GetMoreLikes(moreLikes));    
+                    }
+                    
                 }
 
                 try
@@ -169,16 +176,187 @@ namespace pbpTwitterExercise.Models.Correspondents
                     });
                 }
 
+                string moreLikes;
                 // and then we must page through likes.
                 try
                 {
-                    string moreLikes = dynObj.paging.next;
-                    likes.AddRange(
-                        GetMoreLikes(moreLikes));
+                    moreLikes = dynObj.paging.next;
+                }
+                catch
+                {
+                    moreLikes = null;
+                }
+
+                if (moreLikes != null)
+                {
+                    likes.AddRange(GetMoreLikes(moreLikes));   
+                }
+            }
+
+            return likes;
+        }
+
+        public IDictionary<string, IList<PostMetaData>> GetPopularPosts()
+        {
+            var result = new Dictionary<string, IList<PostMetaData>>();
+            result.Add("likes", CountLikes(startingpPoint));
+            result.Add("comments", CountComments(startingpPoint));
+
+            return result;
+        }
+
+        private IList<PostMetaData> CountComments(string endpoint)
+        {
+            var comments = new List<PostMetaData>();
+
+            using (var client = new HttpClient())
+            {
+                var jsonString = client.GetStringAsync(endpoint).Result;
+                dynamic dynObj = JsonConvert.DeserializeObject(jsonString);
+                foreach (var post in dynObj.data)
+                {
+                    if (post.comments != null)
+                    {
+                        IEnumerable<Object> a = post.comments.data;
+                        var count = a.Count();
+                        
+                        // and then we must page through likes.
+                        try
+                        {
+                            string moreComments = post.comments.paging.next;
+                            count += CountMoreComments(moreComments);
+                        }
+                        catch
+                        {
+                            // no paging to be done.
+                        }
+
+                        comments.Add(new PostMetaData
+                        {
+                            Id = post.id,
+                            Count = count
+                        });
+                    }
+                }
+
+                try
+                {
+                    string nextPage = dynObj.paging.next;
+                    comments.AddRange(CountComments(nextPage));
                 }
                 catch
                 {
                     // no paging to be done.
+                }
+            }
+
+            return comments;
+        }
+
+        private int CountMoreComments(string endpoint)
+        {
+            int count;
+
+            using (var client = new HttpClient())
+            {
+                var jsonString = client.GetStringAsync(endpoint).Result;
+                dynamic dynObj = JsonConvert.DeserializeObject(jsonString);
+
+                IEnumerable<Object> a = dynObj.data;
+                count = a.Count();
+                
+                // and then we must page through likes.
+                try
+                {
+                    string moreComments = dynObj.paging.next;
+                    count += CountMoreComments(moreComments);
+                }
+                catch
+                {
+                    // no paging to be done.
+                }
+            }
+
+            return count;
+        }
+        
+        private IList<PostMetaData> CountLikes(string endpoint)
+        {
+            var likes = new List<PostMetaData>();
+
+            using (var client = new HttpClient())
+            {
+                var jsonString = client.GetStringAsync(endpoint).Result;
+                dynamic dynObj = JsonConvert.DeserializeObject(jsonString);
+                foreach (var post in dynObj.data)
+                {
+                    IEnumerable<Object> a = post.likes.data;
+                    var likeCount = a.Count();
+
+                    string moreLikes;
+                    // and then we must page through likes.
+                    try
+                    {
+                        moreLikes = post.likes.paging.next;
+                        
+                    }
+                    catch
+                    {
+                        moreLikes = null;
+                    }
+
+                    if (moreLikes != null)
+                    {
+                        likeCount += CountMoreLikes(moreLikes);    
+                    }
+
+                    likes.Add(new PostMetaData
+                    {
+                        Id = post.id,
+                        Count = likeCount
+                    });
+                }
+
+                try
+                {
+                    string nextPage = dynObj.paging.next;
+                    likes.AddRange(CountLikes(nextPage));
+                }
+                catch
+                {
+                    // no paging to be done.
+                }
+            }
+
+            return likes;
+        }
+
+        private int CountMoreLikes(string endpoint)
+        {
+            int likes;
+
+            using (var client = new HttpClient())
+            {
+                var jsonString = client.GetStringAsync(endpoint).Result;
+                dynamic dynObj = JsonConvert.DeserializeObject(jsonString);
+
+                IEnumerable<Object> a = dynObj.data;
+                likes = a.Count();
+
+                string moreLikes;
+                // and then we must page through likes.
+                try
+                {
+                    moreLikes = dynObj.paging.next;
+                }
+                catch
+                {
+                    moreLikes = null;
+                }
+
+                if (moreLikes != null)
+                {
+                    likes += CountMoreLikes(moreLikes);    
                 }
             }
 
@@ -190,6 +368,12 @@ namespace pbpTwitterExercise.Models.Correspondents
     {
         public IList<FbUser> Likes;
         public IList<FbUser> Comments;
+    }
+
+    public class PostMetaData
+    {
+        public string Id { get; set; }
+        public int Count { get; set; }
     }
 
     public class FbUser
